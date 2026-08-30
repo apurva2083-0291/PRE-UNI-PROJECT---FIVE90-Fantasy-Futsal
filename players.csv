@@ -1,0 +1,25 @@
+﻿id,name,position,overall,pace,shooting,passing,dribbling,defending,physical,diving,handling,kicking,reflexes,speed,positioning
+1,Thibaut Courtois,GK,89,0,0,0,0,0,0,85,89,76,90,42,88
+2,Alisson,GK,89,0,0,0,0,0,0,86,85,85,89,47,91
+3,Ederson,GK,88,0,0,0,0,0,0,86,82,91,87,64,86
+4,Manuel Neuer,GK,85,0,0,0,0,0,0,84,82,91,88,55,85
+5,Virgil van Dijk,DEF,89,79,60,71,72,90,86,0,0,0,0,0,0
+6,Antonio Rudiger,DEF,86,82,47,73,62,86,87,0,0,0,0,0,0
+7,William Saliba,DEF,87,83,35,78,70,89,83,0,0,0,0,0,0
+8,Ruben Dias,DEF,88,62,38,72,58,90,88,0,0,0,0,0,0
+9,Achraf Hakimi,DEF,86,92,67,79,83,72,78,0,0,0,0,0,0
+10,Rodri,MID,91,65,72,87,80,87,85,0,0,0,0,0,0
+11,Jude Bellingham,MID,90,80,83,83,88,78,83,0,0,0,0,0,0
+12,Kevin De Bruyne,MID,90,72,88,94,87,64,78,0,0,0,0,0,0
+13,Pedri,MID,86,79,68,91,92,68,60,0,0,0,0,0,0
+14,Federico Valverde,MID,88,88,82,84,79,80,87,0,0,0,0,0,0
+15,Declan Rice,MID,87,75,65,84,75,84,85,0,0,0,0,0,0
+16,Martin Odegaard,MID,88,75,72,89,90,55,65,0,0,0,0,0,0
+17,Bernardo Silva,MID,88,75,80,88,93,62,67,0,0,0,0,0,0
+18,Bruno Fernandes,MID,87,71,85,90,82,65,72,0,0,0,0,0,0
+19,Toni Kroos,MID,86,53,65,93,81,70,60,0,0,0,0,0,0
+20,Vinicius Jr,ATT,89,95,82,81,92,29,75,0,0,0,0,0,0
+21,Mohamed Salah,ATT,89,89,89,82,90,45,75,0,0,0,0,0,0
+22,Kylian Mbappe,ATT,91,97,90,80,92,36,78,0,0,0,0,0,0
+23,Erling Haaland,ATT,91,88,94,70,80,45,92,0,0,0,0,0,0
+24,Harry Kane,ATT,90,69,93,85,84,47,85,0,0,0,0,0,0
