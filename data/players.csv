@@ -1,0 +1,342 @@
+players = [
+
+    # GOALKEEPERS
+    {
+        "name": "Thibaut Courtois",
+        "position": "GK",
+        "overall": 89,
+        "diving": 85,
+        "handling": 89,
+        "kicking": 76,
+        "reflexes": 90,
+        "speed": 42,
+        "positioning": 88
+    },
+    {
+        "name": "Alisson",
+        "position": "GK",
+        "overall": 89,
+        "diving": 86,
+        "handling": 85,
+        "kicking": 85,
+        "reflexes": 89,
+        "speed": 47,
+        "positioning": 91
+    },
+    {
+        "name": "Ederson",
+        "position": "GK",
+        "overall": 88,
+        "diving": 86,
+        "handling": 82,
+        "kicking": 91,
+        "reflexes": 87,
+        "speed": 64,
+        "positioning": 86
+    },
+    {
+        "name": "Manuel Neuer",
+        "position": "GK",
+        "overall": 85,
+        "diving": 84,
+        "handling": 82,
+        "kicking": 91,
+        "reflexes": 88,
+        "speed": 55,
+        "positioning": 85
+    },
+
+    # DEFENDERS
+    {
+        "name": "Virgil van Dijk",
+        "position": "DF",
+        "overall": 89,
+        "pace": 79,
+        "shooting": 60,
+        "passing": 71,
+        "dribbling": 72,
+        "defending": 90,
+        "physical": 86
+    },
+    {
+        "name": "Antonio Rudiger",
+        "position": "DF",
+        "overall": 86,
+        "pace": 82,
+        "shooting": 47,
+        "passing": 73,
+        "dribbling": 62,
+        "defending": 86,
+        "physical": 87
+    },
+    {
+        "name": "William Saliba",
+        "position": "DF",
+        "overall": 87,
+        "pace": 83,
+        "shooting": 35,
+        "passing": 78,
+        "dribbling": 70,
+        "defending": 89,
+        "physical": 83
+    },
+    {
+        "name": "Ruben Dias",
+        "position": "DF",
+        "overall": 88,
+        "pace": 62,
+        "shooting": 38,
+        "passing": 72,
+        "dribbling": 58,
+        "defending": 90,
+        "physical": 88
+    },
+    {
+        "name": "Achraf Hakimi",
+        "position": "DF",
+        "overall": 86,
+        "pace": 92,
+        "shooting": 67,
+        "passing": 79,
+        "dribbling": 83,
+        "defending": 72,
+        "physical": 78
+    },
+
+    # MIDFIELDERS
+    {
+        "name": "Rodri",
+        "position": "MD",
+        "overall": 91,
+        "pace": 65,
+        "shooting": 72,
+        "passing": 87,
+        "dribbling": 80,
+        "defending": 87,
+        "physical": 85
+    },
+    {
+        "name": "Jude Bellingham",
+        "position": "MD",
+        "overall": 90,
+        "pace": 80,
+        "shooting": 83,
+        "passing": 83,
+        "dribbling": 88,
+        "defending": 78,
+        "physical": 83
+    },
+    {
+        "name": "Kevin De Bruyne",
+        "position": "MD",
+        "overall": 90,
+        "pace": 72,
+        "shooting": 88,
+        "passing": 94,
+        "dribbling": 87,
+        "defending": 64,
+        "physical": 78
+    },
+    {
+        "name": "Pedri",
+        "position": "MD",
+        "overall": 86,
+        "pace": 79,
+        "shooting": 68,
+        "passing": 91,
+        "dribbling": 92,
+        "defending": 68,
+        "physical": 60
+    },
+    {
+        "name": "Federico Valverde",
+        "position": "MD",
+        "overall": 88,
+        "pace": 88,
+        "shooting": 82,
+        "passing": 84,
+        "dribbling": 79,
+        "defending": 80,
+        "physical": 87
+    },
+    {
+        "name": "Declan Rice",
+        "position": "MD",
+        "overall": 87,
+        "pace": 75,
+        "shooting": 65,
+        "passing": 84,
+        "dribbling": 75,
+        "defending": 84,
+        "physical": 85
+    },
+    {
+        "name": "Martin Odegaard",
+        "position": "MD",
+        "overall": 88,
+        "pace": 75,
+        "shooting": 72,
+        "passing": 89,
+        "dribbling": 90,
+        "defending": 55,
+        "physical": 65
+    },
+    {
+        "name": "Bernardo Silva",
+        "position": "MD",
+        "overall": 88,
+        "pace": 75,
+        "shooting": 80,
+        "passing": 88,
+        "dribbling": 93,
+        "defending": 62,
+        "physical": 67
+    },
+    {
+        "name": "Bruno Fernandes",
+        "position": "MD",
+        "overall": 87,
+        "pace": 71,
+        "shooting": 85,
+        "passing": 90,
+        "dribbling": 82,
+        "defending": 65,
+        "physical": 72
+    },
+    {
+        "name": "Toni Kroos",
+        "position": "MD",
+        "overall": 86,
+        "pace": 53,
+        "shooting": 65,
+        "passing": 93,
+        "dribbling": 81,
+        "defending": 70,
+        "physical": 60
+    },
+    {
+        "name": "Frenkie de Jong",
+        "position": "MD",
+        "overall": 87,
+        "pace": 79,
+        "shooting": 65,
+        "passing": 91,
+        "dribbling": 90,
+        "defending": 65,
+        "physical": 75
+    },
+
+    # FORWARDS
+    {
+        "name": "Vinicius Jr",
+        "position": "FW",
+        "overall": 89,
+        "pace": 95,
+        "shooting": 82,
+        "passing": 81,
+        "dribbling": 92,
+        "defending": 29,
+        "physical": 75
+    },
+    {
+        "name": "Mohamed Salah",
+        "position": "FW",
+        "overall": 89,
+        "pace": 89,
+        "shooting": 89,
+        "passing": 82,
+        "dribbling": 90,
+        "defending": 45,
+        "physical": 75
+    },
+    {
+        "name": "Bukayo Saka",
+        "position": "FW",
+        "overall": 87,
+        "pace": 88,
+        "shooting": 82,
+        "passing": 81,
+        "dribbling": 88,
+        "defending": 48,
+        "physical": 70
+    },
+    {
+        "name": "Lamine Yamal",
+        "position": "FW",
+        "overall": 86,
+        "pace": 90,
+        "shooting": 81,
+        "passing": 86,
+        "dribbling": 93,
+        "defending": 35,
+        "physical": 64
+    },
+    {
+        "name": "Rafael Leao",
+        "position": "FW",
+        "overall": 86,
+        "pace": 95,
+        "shooting": 80,
+        "passing": 74,
+        "dribbling": 91,
+        "defending": 30,
+        "physical": 82
+    },
+
+    # STRIKERS
+    {
+        "name": "Kylian Mbappe",
+        "position": "ST",
+        "overall": 91,
+        "pace": 97,
+        "shooting": 90,
+        "passing": 80,
+        "dribbling": 92,
+        "defending": 36,
+        "physical": 78
+    },
+    {
+        "name": "Erling Haaland",
+        "position": "ST",
+        "overall": 91,
+        "pace": 88,
+        "shooting": 94,
+        "passing": 70,
+        "dribbling": 80,
+        "defending": 45,
+        "physical": 92
+    },
+    {
+        "name": "Harry Kane",
+        "position": "ST",
+        "overall": 90,
+        "pace": 69,
+        "shooting": 93,
+        "passing": 85,
+        "dribbling": 84,
+        "defending": 47,
+        "physical": 85
+    },
+    {
+        "name": "Robert Lewandowski",
+        "position": "ST",
+        "overall": 88,
+        "pace": 75,
+        "shooting": 91,
+        "passing": 80,
+        "dribbling": 87,
+        "defending": 44,
+        "physical": 82
+    },
+    {
+        "name": "Lautaro Martinez",
+        "position": "ST",
+        "overall": 89,
+        "pace": 82,
+        "shooting": 89,
+        "passing": 75,
+        "dribbling": 87,
+        "defending": 50,
+        "physical": 85
+    }
+]
