@@ -156,12 +156,18 @@ def remove_checkerboard_background(image):
 # 5. GENERATE ONE PLAYER CARD
 # --------------------------------------------------
 
-def generate_player_card(player):
+def generate_player_card(player, force=False):
     """Create and save one player card."""
 
     player_name = str(player["name"])
     position = str(player["position"]).upper()
     overall = int(player["overall"])
+
+    safe_name = player_name.replace(" ", "_")
+    output_path = OUTPUT_FOLDER / f"{safe_name}_Card.png"
+
+    if output_path.exists() and not force:
+        return output_path
 
     # Choose the correct template.
     if position == "GK":
@@ -369,13 +375,6 @@ def generate_player_card(player):
             stroke_fill="black",
         )
 
-    # Create a safe filename.
-    safe_name = player_name.replace(" ", "_")
-
-    output_path = (
-        OUTPUT_FOLDER / f"{safe_name}_Card.png"
-    )
-
     # Save the completed card.
     card.save(output_path)
 
@@ -418,10 +417,10 @@ if __name__ == "__main__":
     ].iloc[0]
 
     print("Creating a goalkeeper card...")
-    goalkeeper_card = generate_player_card(goalkeeper)
+    goalkeeper_card = generate_player_card(goalkeeper, force=True)
 
     print("Creating an outfield-player card...")
-    outfield_card = generate_player_card(outfield_player)
+    outfield_card = generate_player_card(outfield_player, force=True)
 
     print()
     print("Testing finished successfully.")

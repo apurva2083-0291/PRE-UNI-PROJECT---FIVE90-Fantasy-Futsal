@@ -204,6 +204,9 @@ cython_debug/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
+# Runtime-generated FIVE90 player cards
+GeneratedCards/
+
 # Ruff stuff:
 .ruff_cache/
 
