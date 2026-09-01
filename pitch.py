@@ -1,10 +1,17 @@
+import base64
 import random
+import tempfile
+import webbrowser
+from pathlib import Path
 
 import plotly.graph_objects as go
 
 
-FRAME_DURATION_MS = 550
-TRANSITION_DURATION_MS = 150
+BASE_DIR = Path(__file__).parent
+GOAL_SOUND = BASE_DIR / "Sounds" / "Ankara messi.mp3"
+
+FRAME_DURATION_MS = 1800
+TRANSITION_DURATION_MS = 350
 
 BLUE_POSITIONS = [(40, 9), (40, 28), (22, 47), (58, 47), (40, 66)]
 RED_POSITIONS = [(40, 111), (40, 92), (22, 73), (58, 73), (40, 57)]
@@ -95,16 +102,27 @@ def _text_trace(x, y, text, size, colour="white"):
     )
 
 
-def _status_traces(text):
-    """Return a final-score panel and its text as reliable data traces."""
+def _status_traces(text, colour="#66f5c0", size=34):
+    """Return a temporary replay panel and its text as data traces."""
 
     visible = bool(text.strip())
+    is_three_line_message = text.count("<br>") >= 2
     panel_colour = "rgba(0, 25, 20, 0.92)" if visible else "rgba(0,0,0,0)"
-    border_colour = "#66f5c0" if visible else "rgba(0,0,0,0)"
+    border_colour = colour if visible else "rgba(0,0,0,0)"
+    panel_x = (
+        [7, 73, 73, 7, 7]
+        if is_three_line_message
+        else [11, 69, 69, 11, 11]
+    )
+    panel_y = (
+        [58, 58, 86, 86, 58]
+        if is_three_line_message
+        else [63, 63, 81, 81, 63]
+    )
 
     panel = go.Scatter(
-        x=[11, 69, 69, 11, 11],
-        y=[63, 63, 81, 81, 63],
+        x=panel_x,
+        y=panel_y,
         mode="lines",
         fill="toself",
         fillcolor=panel_colour,
@@ -112,7 +130,7 @@ def _status_traces(text):
         hoverinfo="skip",
         showlegend=False,
     )
-    message = _text_trace(40, 72, text, 34, "#66f5c0")
+    message = _text_trace(40, 72, text, size, colour)
     return panel, message
 
 
@@ -130,6 +148,95 @@ def _full_time_text(event, player_one_name, player_two_name, final=False):
         winner = "MATCH DRAWN"
 
     return f"<b>FULL TIME<br>{winner}</b>"
+
+
+def _frame_data(
+    positions_one,
+    positions_two,
+    team_one_names,
+    team_two_names,
+    player_one_name,
+    player_two_name,
+    ball,
+    score_one,
+    score_two,
+    minute,
+    event_text,
+    status_text=" ",
+    status_colour="#66f5c0",
+    status_size=34,
+):
+    """Build the traces replaced on every replay frame."""
+
+    return [
+        _team_trace(
+            positions_one,
+            team_one_names,
+            TEAM_ONE_COLOUR,
+            player_one_name,
+        ),
+        _team_trace(
+            positions_two,
+            team_two_names,
+            TEAM_TWO_COLOUR,
+            player_two_name,
+        ),
+        _ball_trace(*ball),
+        _text_trace(
+            40,
+            130,
+            f"<b>{score_one}  -  {score_two}</b>",
+            30,
+            "#66f5c0",
+        ),
+        _text_trace(78, 130, f"<b>{minute}'</b>", 18),
+        _text_trace(40, -14, f"<b>{event_text}</b>", 18),
+        *_status_traces(status_text, status_colour, status_size),
+    ]
+
+
+def _goal_sound_script():
+    """Return browser code that plays the goal sound on goal frames only."""
+
+    if not GOAL_SOUND.exists():
+        return ""
+
+    encoded_sound = base64.b64encode(GOAL_SOUND.read_bytes()).decode("ascii")
+    return f"""
+    (() => {{
+        const graph = document.getElementById('{{plot_id}}');
+        const goalAudio = new Audio(
+            'data:audio/mpeg;base64,{encoded_sound}'
+        );
+        goalAudio.preload = 'auto';
+        goalAudio.volume = 0.85;
+
+        graph.on('plotly_buttonclicked', (event) => {{
+            const label = event?.button?.label || '';
+            if (label.includes('PLAY')) {{
+                goalAudio.muted = true;
+                goalAudio.play().then(() => {{
+                    goalAudio.pause();
+                    goalAudio.currentTime = 0;
+                    goalAudio.muted = false;
+                }}).catch(() => {{
+                    goalAudio.muted = false;
+                }});
+            }} else if (label.includes('PAUSE')) {{
+                goalAudio.pause();
+            }}
+        }});
+
+        graph.on('plotly_animatingframe', (event) => {{
+            const frameName = event?.name || '';
+            if (/^\\d+-goal$/.test(frameName)) {{
+                goalAudio.muted = false;
+                goalAudio.currentTime = 0;
+                goalAudio.play().catch(() => {{}});
+            }}
+        }});
+    }})();
+    """
 
 
 def _add_pitch_shapes(fig):
@@ -298,6 +405,7 @@ def build_match_figure(
     frames = []
     previous_ball = (40, 60)
     previous_score = (0, 0)
+    frame_traces = [0, 1, 2, 4, 5, 6, 7, 8]
 
     for event_index, event in enumerate(events):
         move_positions_one = _jitter_positions(
@@ -331,82 +439,125 @@ def build_match_figure(
         frames.append(
             go.Frame(
                 name=f"{event_index}-move",
-                data=[
-                    _team_trace(
-                        move_positions_one,
-                        team_one_names,
-                        TEAM_ONE_COLOUR,
-                        player_one_name,
-                    ),
-                    _team_trace(
-                        move_positions_two,
-                        team_two_names,
-                        TEAM_TWO_COLOUR,
-                        player_two_name,
-                    ),
-                    _ball_trace(*moving_ball),
-                    _text_trace(
-                        40,
-                        130,
-                        f"<b>{previous_score[0]}  -  {previous_score[1]}</b>",
-                        30,
-                        "#66f5c0",
-                    ),
-                    _text_trace(78, 130, f"<b>{event['minute']}'</b>", 18),
-                    _text_trace(
-                        40,
-                        -14,
-                        f"<b>{event['player']} builds the attack...</b>",
-                        18,
-                    ),
-                    *_status_traces(" "),
-                ],
-                traces=[0, 1, 2, 4, 5, 6, 7, 8],
+                data=_frame_data(
+                    move_positions_one,
+                    move_positions_two,
+                    team_one_names,
+                    team_two_names,
+                    player_one_name,
+                    player_two_name,
+                    moving_ball,
+                    previous_score[0],
+                    previous_score[1],
+                    event["minute"],
+                    f"{event['player']} builds the attack...",
+                ),
+                traces=frame_traces,
             )
         )
 
-        is_final_event = event_index == len(events) - 1
+        is_goal = event["type"] == "goal"
+        status_text = (
+            f"<b>GOAL!<br>{event['player']}<br>SCORES!</b>"
+            if is_goal
+            else " "
+        )
+        status_colour = "#f7d65c" if is_goal else "#66f5c0"
+        event_frame_data = _frame_data(
+            event_positions_one,
+            event_positions_two,
+            team_one_names,
+            team_two_names,
+            player_one_name,
+            player_two_name,
+            target_ball,
+            event["score_one"],
+            event["score_two"],
+            event["minute"],
+            event["text"],
+            status_text,
+            status_colour,
+            24 if is_goal else 34,
+        )
         frames.append(
             go.Frame(
-                name=f"{event_index}-event",
-                data=[
-                    _team_trace(
-                        event_positions_one,
-                        team_one_names,
-                        TEAM_ONE_COLOUR,
-                        player_one_name,
-                    ),
-                    _team_trace(
-                        event_positions_two,
-                        team_two_names,
-                        TEAM_TWO_COLOUR,
-                        player_two_name,
-                    ),
-                    _ball_trace(*target_ball),
-                    _text_trace(
-                        40,
-                        130,
-                        f"<b>{event['score_one']}  -  {event['score_two']}</b>",
-                        30,
-                        "#66f5c0",
-                    ),
-                    _text_trace(78, 130, f"<b>{event['minute']}'</b>", 18),
-                    _text_trace(40, -14, f"<b>{event['text']}</b>", 18),
-                    *_status_traces(
-                        _full_time_text(
-                            event,
-                            player_one_name,
-                            player_two_name,
-                            final=is_final_event,
-                        )
-                    ),
-                ],
-                traces=[0, 1, 2, 4, 5, 6, 7, 8],
+                name=(
+                    f"{event_index}-goal"
+                    if is_goal
+                    else f"{event_index}-event"
+                ),
+                data=event_frame_data,
+                traces=frame_traces,
             )
         )
+
+        # Hold each goal popup long enough to read and hear the commentary.
+        if is_goal:
+            frames.append(
+                go.Frame(
+                    name=f"{event_index}-goal-hold",
+                    data=event_frame_data,
+                    traces=frame_traces,
+                )
+            )
+
+        # Half time is its own screen, even when the 45th-minute event is a goal.
+        if event["minute"] == 45:
+            half_time_data = _frame_data(
+                event_positions_one,
+                event_positions_two,
+                team_one_names,
+                team_two_names,
+                player_one_name,
+                player_two_name,
+                target_ball,
+                event["score_one"],
+                event["score_two"],
+                45,
+                "HALF TIME",
+                (
+                    "<b>HALF TIME<br>"
+                    f"{event['score_one']} - {event['score_two']}</b>"
+                ),
+            )
+            for hold_index in range(2):
+                frames.append(
+                    go.Frame(
+                        name=f"half-time-{hold_index + 1}",
+                        data=half_time_data,
+                        traces=frame_traces,
+                    )
+                )
 
         previous_ball = target_ball
         previous_score = (event["score_one"], event["score_two"])
+
+    final_event = events[-1]
+    frames.append(
+        go.Frame(
+            name="full-time",
+            data=_frame_data(
+                event_positions_one,
+                event_positions_two,
+                team_one_names,
+                team_two_names,
+                player_one_name,
+                player_two_name,
+                target_ball,
+                final_event["score_one"],
+                final_event["score_two"],
+                90,
+                "FINAL WHISTLE",
+                _full_time_text(
+                    final_event,
+                    player_one_name,
+                    player_two_name,
+                    final=True,
+                ),
+            ),
+            traces=frame_traces,
+        )
+    )
 
     fig.frames = frames
     fig.update_layout(
@@ -486,14 +637,21 @@ def show_match(team_one, team_two, events, player_one_name, player_two_name):
         player_one_name,
         player_two_name,
     )
-    fig.show(
+    replay_file = Path(tempfile.gettempdir()) / "FIVE90_match_replay.html"
+    fig.write_html(
+        replay_file,
+        include_plotlyjs=True,
+        full_html=True,
+        auto_play=False,
+        post_script=_goal_sound_script(),
         config={
             "displaylogo": False,
             "displayModeBar": False,
             "responsive": True,
             "scrollZoom": False,
-        }
+        },
     )
+    webbrowser.open(replay_file.resolve().as_uri())
     return fig
 
 

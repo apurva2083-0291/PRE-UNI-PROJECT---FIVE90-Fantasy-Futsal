@@ -26,7 +26,7 @@ from match import (
     validate_team,
 )
 from result_screen import result_text
-from pitch import build_match_figure
+from pitch import FRAME_DURATION_MS, _goal_sound_script, build_match_figure
 
 
 class PlayerDataTests(unittest.TestCase):
@@ -153,24 +153,48 @@ class MatchTests(unittest.TestCase):
             "B",
         )
 
-        self.assertEqual(len(figure.frames), len(events) * 2)
+        goals = [event for event in events if event["type"] == "goal"]
+        expected_frame_count = len(events) * 2 + len(goals) + 3
+        self.assertEqual(len(figure.frames), expected_frame_count)
         self.assertEqual(len(figure.layout.sliders), 0)
+        self.assertGreaterEqual(FRAME_DURATION_MS, 1500)
+
+        frames = {frame.name: frame for frame in figure.frames}
+        self.assertIn("half-time-1", frames)
+        self.assertIn("half-time-2", frames)
+        self.assertIn("HALF TIME", frames["half-time-1"].data[7].text[0])
 
         for event_index, event in enumerate(events):
-            movement_frame = figure.frames[event_index * 2]
-            event_frame = figure.frames[event_index * 2 + 1]
+            movement_frame = frames[f"{event_index}-move"]
+            event_name = (
+                f"{event_index}-goal"
+                if event["type"] == "goal"
+                else f"{event_index}-event"
+            )
+            event_frame = frames[event_name]
 
             expected_traces = (0, 1, 2, 4, 5, 6, 7, 8)
             self.assertEqual(tuple(movement_frame.traces), expected_traces)
             self.assertEqual(tuple(event_frame.traces), expected_traces)
             self.assertIn("builds the attack", movement_frame.data[5].text[0])
+            self.assertFalse(movement_frame.data[7].text[0].strip())
             self.assertIn(event["text"], event_frame.data[5].text[0])
-            self.assertEqual(
-                bool(event_frame.data[7].text[0].strip()),
-                event_index == len(events) - 1,
-            )
 
+            if event["type"] == "goal":
+                self.assertIn("GOAL!", event_frame.data[7].text[0])
+                self.assertIn(event["player"], event_frame.data[7].text[0])
+                self.assertIn(f"{event_index}-goal-hold", frames)
+            else:
+                self.assertFalse(event_frame.data[7].text[0].strip())
+
+        self.assertEqual(figure.frames[-1].name, "full-time")
         self.assertIn("FULL TIME", figure.frames[-1].data[7].text[0])
+
+    def test_goal_sound_is_embedded_and_tied_to_goal_frames(self):
+        script = _goal_sound_script()
+        self.assertIn("data:audio/mpeg;base64,", script)
+        self.assertIn("plotly_animatingframe", script)
+        self.assertIn("-goal$", script)
 
 
 class CardImageTests(unittest.TestCase):

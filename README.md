@@ -19,7 +19,7 @@ FIVE90 is a same-device, two-player fantasy futsal draft and event-based match r
 - Plotly pitch with five blue players, five red players, surnames, micro-movements, and a moving ball
 - Dynamic score, minute, event, winner, and goal-scorer displays
 - Rematch, New Draft, and Exit options
-- Optional sound assets are included without affecting replay performance
+- Synchronized "Ankara Messi" goal commentary without `pygame`
 - Console fallback for computers where the graphical draft cannot open
 
 ## Project structure
@@ -122,7 +122,7 @@ python -m unittest discover -s tests -v
 
 ## Important sound note
 
-FIVE90 does **not** require `pygame`. This avoids the Python 3.14 installation failure seen during development. Sound files are kept in `Sounds/` for future optional use; the stable replay does not start a separate audio process, so it stays synchronized and responsive on Windows and macOS.
+FIVE90 does **not** require `pygame`. The "Ankara Messi" MP3 is embedded into the replay page and plays only when a goal frame appears, keeping the sound synchronized on Windows and macOS without a separate audio process.
 
 ## Team responsibilities
 
