@@ -206,6 +206,7 @@ tempCodeRunnerFile.py
 
 # Runtime-generated FIVE90 player cards
 GeneratedCards/
+.preview/
 
 # Ruff stuff:
 .ruff_cache/

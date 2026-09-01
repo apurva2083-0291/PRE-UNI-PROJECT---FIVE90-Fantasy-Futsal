@@ -88,19 +88,29 @@ def get_font(size, bold=False):
 # --------------------------------------------------
 
 def remove_checkerboard_background(image):
-    """Remove a connected grey-and-white checkerboard background."""
+    """Remove a fake checkerboard without damaging a real PNG cut-out."""
 
     image = image.convert("RGBA")
+
+    # Most player pictures already have a proper transparent background.
+    # Their light shirts, collars, socks, and skin details must be kept exactly
+    # as supplied, so only crop transparent padding in that case.
+    alpha = image.getchannel("A")
+    if alpha.getextrema()[0] < 255:
+        visible_area = alpha.getbbox()
+        return image.crop(visible_area) if visible_area else image
+
     pixels = image.load()
     width, height = image.size
 
     visited = set()
     queue = deque()
 
-    # Start checking from all four image edges.
+    # Fake checkerboards are connected to the top and side edges. Avoid using
+    # the bottom as a seed because a player's shirt, shorts, or legs can touch
+    # that edge.
     for x in range(width):
         queue.append((x, 0))
-        queue.append((x, height - 1))
 
     for y in range(height):
         queue.append((0, y))
@@ -108,18 +118,16 @@ def remove_checkerboard_background(image):
 
     def looks_like_checkerboard(pixel):
         red, green, blue, alpha = pixel
+        if alpha == 0:
+            return True
 
+        colour_difference = max(red, green, blue) - min(red, green, blue)
         brightness = (red + green + blue) / 3
-        colour_difference = max(red, green, blue) - min(
-            red,
-            green,
-            blue,
-        )
 
-        return alpha == 0 or (
-            brightness > 140
-            and colour_difference < 25
-        )
+        # The fake backgrounds are bright neutral greys. Flooding only from
+        # safe edges removes compression variations while stopping at the
+        # coloured or darker outline around the player.
+        return colour_difference <= 20 and brightness >= 165
 
     while queue:
         x, y = queue.popleft()
@@ -144,7 +152,7 @@ def remove_checkerboard_background(image):
         queue.append((x, y - 1))
 
     # Remove empty transparent space around the player.
-    visible_area = image.getbbox()
+    visible_area = image.getchannel("A").getbbox()
 
     if visible_area:
         image = image.crop(visible_area)
@@ -165,9 +173,6 @@ def generate_player_card(player, force=False):
 
     safe_name = player_name.replace(" ", "_")
     output_path = OUTPUT_FOLDER / f"{safe_name}_Card.png"
-
-    if output_path.exists() and not force:
-        return output_path
 
     # Choose the correct template.
     if position == "GK":
@@ -192,6 +197,16 @@ def generate_player_card(player, force=False):
         raise FileNotFoundError(
             f"Player image was not found: {player_image_path}"
         )
+
+    # Reuse a generated card only while all of its inputs are unchanged.
+    if output_path.exists() and not force:
+        newest_input = max(
+            template_path.stat().st_mtime,
+            player_image_path.stat().st_mtime,
+            Path(__file__).stat().st_mtime,
+        )
+        if output_path.stat().st_mtime >= newest_input:
+            return output_path
 
     # Open the template and player image.
     card = Image.open(template_path).convert("RGBA")

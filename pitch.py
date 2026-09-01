@@ -1,20 +1,10 @@
-import os
-import platform
 import random
-import shutil
-import subprocess
-import threading
-import time
-from pathlib import Path
 
 import plotly.graph_objects as go
 
 
-BASE_DIR = Path(__file__).parent
-COMMENTARY_SOUND = BASE_DIR / "Sounds" / "Ankara messi.mp3"
-FINAL_WHISTLE_SOUND = BASE_DIR / "Sounds" / "final whistle.mp3"
-
-FRAME_DURATION_MS = 5000
+FRAME_DURATION_MS = 550
+TRANSITION_DURATION_MS = 150
 
 BLUE_POSITIONS = [(40, 9), (40, 28), (22, 47), (58, 47), (40, 66)]
 RED_POSITIONS = [(40, 111), (40, 92), (22, 73), (58, 73), (40, 57)]
@@ -47,88 +37,6 @@ def short_name(full_name):
         return preferred_names[full_name]
 
     return str(full_name).split()[-1]
-
-
-def play_sound(sound_file):
-    """Play an MP3 without pygame. Failure never stops the game."""
-
-    sound_file = Path(sound_file)
-    if not sound_file.exists():
-        return False
-
-    try:
-        system = platform.system()
-
-        if system == "Darwin" and shutil.which("afplay"):
-            subprocess.Popen(
-                ["afplay", str(sound_file)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            return True
-
-        if system == "Windows":
-            safe_path = str(sound_file).replace("'", "''")
-            script = (
-                "$p = New-Object -ComObject WMPlayer.OCX; "
-                f"$p.URL = '{safe_path}'; "
-                "$p.settings.volume = 70; "
-                "$p.controls.play(); "
-                "while ($p.playState -ne 1) { "
-                "Start-Sleep -Milliseconds 200 }"
-            )
-            creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-            subprocess.Popen(
-                [
-                    "powershell",
-                    "-NoProfile",
-                    "-WindowStyle",
-                    "Hidden",
-                    "-Command",
-                    script,
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                creationflags=creation_flags,
-            )
-            return True
-
-        if shutil.which("ffplay"):
-            subprocess.Popen(
-                [
-                    "ffplay",
-                    "-nodisp",
-                    "-autoexit",
-                    "-loglevel",
-                    "quiet",
-                    str(sound_file),
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            return True
-    except (OSError, subprocess.SubprocessError):
-        pass
-
-    return False
-
-
-def _start_sound_timeline(events):
-    """Approximately synchronize goal sounds with Plotly animation frames."""
-
-    if os.environ.get("FIVE90_SOUND", "1") == "0":
-        return
-
-    frame_seconds = FRAME_DURATION_MS / 1000
-
-    def worker():
-        for event in events:
-            time.sleep(frame_seconds)
-            if event["type"] == "goal":
-                play_sound(COMMENTARY_SOUND)
-        play_sound(FINAL_WHISTLE_SOUND)
-
-    threading.Thread(target=worker, daemon=True).start()
 
 
 def _jitter_positions(base_positions, frame_index):
@@ -171,99 +79,70 @@ def _ball_position(event, team_one, team_two, blue_positions, red_positions):
     )
 
 
-def _annotations(event, player_one_name, player_two_name, final=False):
-    annotations = [
-        {
-            "x": 40,
-            "y": 137,
-            "text": f"<b>{player_one_name}  vs  {player_two_name}</b>",
-            "showarrow": False,
-            "font": {"size": 22, "color": "white"},
-        },
-        {
-            "x": 40,
-            "y": 130,
-            "text": (
-                f"<b>{event['score_one']}  -  "
-                f"{event['score_two']}</b>"
-            ),
-            "showarrow": False,
-            "font": {"size": 30, "color": "#66f5c0"},
-        },
-        {
-            "x": 78,
-            "y": 130,
-            "text": f"<b>{event['minute']}'</b>",
-            "showarrow": False,
-            "font": {"size": 18, "color": "white"},
-        },
-        {
-            "x": 40,
-            "y": -14,
-            "text": f"<b>{event['text']}</b>",
-            "showarrow": False,
-            "font": {"size": 18, "color": "white"},
-            "bgcolor": "rgba(2, 43, 35, 0.92)",
-            "bordercolor": "#23d89a",
-            "borderwidth": 1,
-            "borderpad": 8,
-        },
-    ]
+def _text_trace(x, y, text, size, colour="white"):
+    """Return replay text as data so every frame replaces it reliably."""
 
-    if event["type"] == "goal" and not final:
-        annotations.append(
-            {
-                "x": 40,
-                "y": 60,
-                "text": "<b>GOAL!</b>",
-                "showarrow": False,
-                "font": {"size": 52, "color": "#f7d65c"},
-                "bgcolor": "rgba(0, 25, 20, 0.80)",
-                "bordercolor": "#f7d65c",
-                "borderwidth": 3,
-                "borderpad": 12,
-            }
-        )
+    return go.Scatter(
+        x=[x],
+        y=[y],
+        mode="text",
+        text=[text],
+        textposition="middle center",
+        textfont={"size": size, "color": colour},
+        hoverinfo="skip",
+        showlegend=False,
+        cliponaxis=False,
+    )
 
-    if event["minute"] == 45:
-        annotations.append(
-            {
-                "x": 40,
-                "y": 92,
-                "text": "<b>HALF TIME</b>",
-                "showarrow": False,
-                "font": {"size": 26, "color": "white"},
-                "bgcolor": "rgba(0, 25, 20, 0.88)",
-                "borderpad": 8,
-            }
-        )
 
-    if final:
-        if event["score_one"] > event["score_two"]:
-            winner = f"{player_one_name} WINS!"
-        elif event["score_two"] > event["score_one"]:
-            winner = f"{player_two_name} WINS!"
-        else:
-            winner = "MATCH DRAWN"
+def _status_traces(text):
+    """Return a final-score panel and its text as reliable data traces."""
 
-        annotations.append(
-            {
-                "x": 40,
-                "y": 60,
-                "text": f"<b>FULL TIME<br>{winner}</b>",
-                "showarrow": False,
-                "font": {"size": 34, "color": "#66f5c0"},
-                "bgcolor": "rgba(0, 25, 20, 0.92)",
-                "bordercolor": "#66f5c0",
-                "borderwidth": 3,
-                "borderpad": 14,
-            }
-        )
+    visible = bool(text.strip())
+    panel_colour = "rgba(0, 25, 20, 0.92)" if visible else "rgba(0,0,0,0)"
+    border_colour = "#66f5c0" if visible else "rgba(0,0,0,0)"
 
-    return annotations
+    panel = go.Scatter(
+        x=[11, 69, 69, 11, 11],
+        y=[63, 63, 81, 81, 63],
+        mode="lines",
+        fill="toself",
+        fillcolor=panel_colour,
+        line={"color": border_colour, "width": 3},
+        hoverinfo="skip",
+        showlegend=False,
+    )
+    message = _text_trace(40, 72, text, 34, "#66f5c0")
+    return panel, message
+
+
+def _full_time_text(event, player_one_name, player_two_name, final=False):
+    """Return the winner message only for the final replay frame."""
+
+    if not final:
+        return " "
+
+    if event["score_one"] > event["score_two"]:
+        winner = f"{player_one_name} WINS!"
+    elif event["score_two"] > event["score_one"]:
+        winner = f"{player_two_name} WINS!"
+    else:
+        winner = "MATCH DRAWN"
+
+    return f"<b>FULL TIME<br>{winner}</b>"
 
 
 def _add_pitch_shapes(fig):
+    fig.add_shape(
+        type="rect",
+        x0=6,
+        y0=-18,
+        x1=74,
+        y1=-10,
+        line={"color": "#23d89a", "width": 1},
+        fillcolor="rgba(2, 43, 35, 0.92)",
+        layer="below",
+    )
     fig.add_shape(
         type="rect",
         x0=0,
@@ -346,8 +225,28 @@ def _team_trace(positions, names, colour, trace_name):
     )
 
 
-def show_match(team_one, team_two, events, player_one_name, player_two_name):
-    """Open the animated FIVE90 match replay in Plotly."""
+def _ball_trace(ball_x, ball_y):
+    """Return the lightweight ball trace used in every animation frame."""
+
+    return go.Scatter(
+        x=[ball_x],
+        y=[ball_y],
+        mode="text",
+        text=["⚽"],
+        textfont={"size": 28},
+        hoverinfo="skip",
+        showlegend=False,
+    )
+
+
+def build_match_figure(
+    team_one,
+    team_two,
+    events,
+    player_one_name,
+    player_two_name,
+):
+    """Build a smooth replay figure that cannot be skipped with a slider."""
 
     if not events:
         raise ValueError("The match replay needs at least one event.")
@@ -357,7 +256,6 @@ def show_match(team_one, team_two, events, player_one_name, player_two_name):
 
     fig = go.Figure()
     _add_pitch_shapes(fig)
-
     fig.add_trace(
         _team_trace(
             BLUE_POSITIONS,
@@ -374,88 +272,143 @@ def show_match(team_one, team_two, events, player_one_name, player_two_name):
             player_two_name,
         )
     )
+    fig.add_trace(_ball_trace(40, 60))
     fig.add_trace(
-        go.Scatter(
-            x=[40],
-            y=[60],
-            mode="text",
-            text=["⚽"],
-            textfont={"size": 28},
-            hoverinfo="skip",
-            showlegend=False,
+        _text_trace(
+            40,
+            137,
+            f"<b>{player_one_name}  vs  {player_two_name}</b>",
+            22,
         )
     )
+    fig.add_trace(_text_trace(40, 130, "<b>0  -  0</b>", 30, "#66f5c0"))
+    fig.add_trace(_text_trace(78, 130, "<b>0'</b>", 18))
+    fig.add_trace(
+        _text_trace(
+            40,
+            -14,
+            "<b>Press PLAY MATCH to begin the replay.</b>",
+            18,
+        )
+    )
+    status_panel, status_message = _status_traces(" ")
+    fig.add_trace(status_panel)
+    fig.add_trace(status_message)
 
     frames = []
+    previous_ball = (40, 60)
+    previous_score = (0, 0)
 
-    for frame_index, event in enumerate(events):
-        blue_positions = _jitter_positions(BLUE_POSITIONS, frame_index)
-        red_positions = _jitter_positions(RED_POSITIONS, frame_index + 100)
-        ball_x, ball_y = _ball_position(
+    for event_index, event in enumerate(events):
+        move_positions_one = _jitter_positions(
+            BLUE_POSITIONS,
+            event_index * 2,
+        )
+        move_positions_two = _jitter_positions(
+            RED_POSITIONS,
+            event_index * 2 + 100,
+        )
+        event_positions_one = _jitter_positions(
+            BLUE_POSITIONS,
+            event_index * 2 + 1,
+        )
+        event_positions_two = _jitter_positions(
+            RED_POSITIONS,
+            event_index * 2 + 101,
+        )
+
+        target_ball = _ball_position(
             event,
             team_one,
             team_two,
-            blue_positions,
-            red_positions,
+            event_positions_one,
+            event_positions_two,
         )
-
+        moving_ball = (
+            (previous_ball[0] + target_ball[0]) / 2,
+            (previous_ball[1] + target_ball[1]) / 2,
+        )
         frames.append(
             go.Frame(
-                name=str(event["minute"]),
+                name=f"{event_index}-move",
                 data=[
                     _team_trace(
-                        blue_positions,
+                        move_positions_one,
                         team_one_names,
                         TEAM_ONE_COLOUR,
                         player_one_name,
                     ),
                     _team_trace(
-                        red_positions,
+                        move_positions_two,
                         team_two_names,
                         TEAM_TWO_COLOUR,
                         player_two_name,
                     ),
-                    go.Scatter(
-                        x=[ball_x],
-                        y=[ball_y],
-                        mode="text",
-                        text=["⚽"],
-                        textfont={"size": 28},
-                        hoverinfo="skip",
-                        showlegend=False,
+                    _ball_trace(*moving_ball),
+                    _text_trace(
+                        40,
+                        130,
+                        f"<b>{previous_score[0]}  -  {previous_score[1]}</b>",
+                        30,
+                        "#66f5c0",
                     ),
+                    _text_trace(78, 130, f"<b>{event['minute']}'</b>", 18),
+                    _text_trace(
+                        40,
+                        -14,
+                        f"<b>{event['player']} builds the attack...</b>",
+                        18,
+                    ),
+                    *_status_traces(" "),
                 ],
-                traces=[0, 1, 2],
-                layout=go.Layout(
-                    annotations=_annotations(
-                        event,
-                        player_one_name,
-                        player_two_name,
-                        final=frame_index == len(events) - 1,
-                    )
-                ),
+                traces=[0, 1, 2, 4, 5, 6, 7, 8],
             )
         )
 
+        is_final_event = event_index == len(events) - 1
+        frames.append(
+            go.Frame(
+                name=f"{event_index}-event",
+                data=[
+                    _team_trace(
+                        event_positions_one,
+                        team_one_names,
+                        TEAM_ONE_COLOUR,
+                        player_one_name,
+                    ),
+                    _team_trace(
+                        event_positions_two,
+                        team_two_names,
+                        TEAM_TWO_COLOUR,
+                        player_two_name,
+                    ),
+                    _ball_trace(*target_ball),
+                    _text_trace(
+                        40,
+                        130,
+                        f"<b>{event['score_one']}  -  {event['score_two']}</b>",
+                        30,
+                        "#66f5c0",
+                    ),
+                    _text_trace(78, 130, f"<b>{event['minute']}'</b>", 18),
+                    _text_trace(40, -14, f"<b>{event['text']}</b>", 18),
+                    *_status_traces(
+                        _full_time_text(
+                            event,
+                            player_one_name,
+                            player_two_name,
+                            final=is_final_event,
+                        )
+                    ),
+                ],
+                traces=[0, 1, 2, 4, 5, 6, 7, 8],
+            )
+        )
+
+        previous_ball = target_ball
+        previous_score = (event["score_one"], event["score_two"])
+
     fig.frames = frames
-    first_event = events[0]
-
-    slider_steps = [
-        {
-            "label": f"{event['minute']}'",
-            "method": "animate",
-            "args": [
-                [str(event["minute"])],
-                {
-                    "mode": "immediate",
-                    "frame": {"duration": 0, "redraw": True},
-                    "transition": {"duration": 0},
-                },
-            ],
-        }
-        for event in events
-    ]
-
     fig.update_layout(
         title={
             "text": "FIVE90 — MATCH REPLAY",
@@ -466,13 +419,8 @@ def show_match(team_one, team_two, events, player_one_name, player_two_name):
         height=1050,
         paper_bgcolor=PAGE_COLOUR,
         plot_bgcolor=PAGE_COLOUR,
-        margin={"l": 45, "r": 45, "t": 90, "b": 120},
+        margin={"l": 45, "r": 45, "t": 90, "b": 90},
         showlegend=False,
-        annotations=_annotations(
-            first_event,
-            player_one_name,
-            player_two_name,
-        ),
         updatemenus=[
             {
                 "type": "buttons",
@@ -490,9 +438,12 @@ def show_match(team_one, team_two, events, player_one_name, player_two_name):
                                 "fromcurrent": True,
                                 "frame": {
                                     "duration": FRAME_DURATION_MS,
-                                    "redraw": True,
+                                    "redraw": False,
                                 },
-                                "transition": {"duration": 650},
+                                "transition": {
+                                    "duration": TRANSITION_DURATION_MS,
+                                    "easing": "linear",
+                                },
                             },
                         ],
                     },
@@ -511,20 +462,6 @@ def show_match(team_one, team_two, events, player_one_name, player_two_name):
                 ],
             }
         ],
-        sliders=[
-            {
-                "active": 0,
-                "steps": slider_steps,
-                "x": 0.08,
-                "len": 0.84,
-                "y": -0.105,
-                "currentvalue": {
-                    "prefix": "Minute: ",
-                    "font": {"color": "white"},
-                },
-                "font": {"color": "white"},
-            }
-        ],
     )
 
     fig.update_xaxes(range=[-5, 85], visible=False, fixedrange=True)
@@ -536,8 +473,28 @@ def show_match(team_one, team_two, events, player_one_name, player_two_name):
         scaleratio=1,
     )
 
-    _start_sound_timeline(events)
-    fig.show(config={"displaylogo": False, "responsive": True})
+    return fig
+
+
+def show_match(team_one, team_two, events, player_one_name, player_two_name):
+    """Open the clean animated FIVE90 match replay in Plotly."""
+
+    fig = build_match_figure(
+        team_one,
+        team_two,
+        events,
+        player_one_name,
+        player_two_name,
+    )
+    fig.show(
+        config={
+            "displaylogo": False,
+            "displayModeBar": False,
+            "responsive": True,
+            "scrollZoom": False,
+        }
+    )
+    return fig
 
 
 if __name__ == "__main__":

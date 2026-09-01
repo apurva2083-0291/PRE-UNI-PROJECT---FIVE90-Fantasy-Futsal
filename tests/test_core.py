@@ -1,5 +1,10 @@
 import random
 import unittest
+from unittest.mock import Mock, patch
+
+from PIL import Image
+
+from card_generator import IMAGE_FOLDER, remove_checkerboard_background
 
 from data_manager import (
     get_player_by_id,
@@ -9,6 +14,7 @@ from data_manager import (
 )
 from draft import (
     DRAFT_POSITIONS,
+    DraftWindow,
     create_automatic_test_draft,
     create_balanced_first_picker_order,
 )
@@ -20,6 +26,7 @@ from match import (
     validate_team,
 )
 from result_screen import result_text
+from pitch import build_match_figure
 
 
 class PlayerDataTests(unittest.TestCase):
@@ -78,6 +85,18 @@ class DraftTests(unittest.TestCase):
             }
             self.assertEqual(counts, REQUIRED_FORMATION)
 
+    def test_player_selection_changes_screen_without_popup(self):
+        window = DraftWindow.__new__(DraftWindow)
+        window.session = Mock()
+        window.show_draft_round = Mock()
+
+        with patch("draft.messagebox.showinfo") as information_popup:
+            window.select_player(1)
+
+        window.session.choose.assert_called_once_with(1)
+        window.show_draft_round.assert_called_once_with()
+        information_popup.assert_not_called()
+
 
 class MatchTests(unittest.TestCase):
     @classmethod
@@ -119,6 +138,59 @@ class MatchTests(unittest.TestCase):
         self.assertEqual(result_text("A", "B", 2, 1), "A WINS!")
         self.assertEqual(result_text("A", "B", 1, 2), "B WINS!")
         self.assertEqual(result_text("A", "B", 1, 1), "MATCH DRAWN")
+
+    def test_replay_has_no_skip_slider_or_stuck_goal_overlay(self):
+        _, _, events = simulate_match(
+            self.session.teams[0],
+            self.session.teams[1],
+            random.Random(90),
+        )
+        figure = build_match_figure(
+            self.session.teams[0],
+            self.session.teams[1],
+            events,
+            "A",
+            "B",
+        )
+
+        self.assertEqual(len(figure.frames), len(events) * 2)
+        self.assertEqual(len(figure.layout.sliders), 0)
+
+        for event_index, event in enumerate(events):
+            movement_frame = figure.frames[event_index * 2]
+            event_frame = figure.frames[event_index * 2 + 1]
+
+            expected_traces = (0, 1, 2, 4, 5, 6, 7, 8)
+            self.assertEqual(tuple(movement_frame.traces), expected_traces)
+            self.assertEqual(tuple(event_frame.traces), expected_traces)
+            self.assertIn("builds the attack", movement_frame.data[5].text[0])
+            self.assertIn(event["text"], event_frame.data[5].text[0])
+            self.assertEqual(
+                bool(event_frame.data[7].text[0].strip()),
+                event_index == len(events) - 1,
+            )
+
+        self.assertIn("FULL TIME", figure.frames[-1].data[7].text[0])
+
+
+class CardImageTests(unittest.TestCase):
+    def test_existing_transparent_cutouts_keep_all_visible_pixels(self):
+        for filename in ["Rudiger.png", "Toni_Kroos.png", "Saliba.png"]:
+            image = Image.open(IMAGE_FOLDER / filename).convert("RGBA")
+            before = sum(image.getchannel("A").histogram()[1:])
+            cleaned = remove_checkerboard_background(image)
+            after = sum(cleaned.getchannel("A").histogram()[1:])
+            self.assertEqual(after, before, filename)
+
+    def test_fragile_white_detail_assets_have_real_transparency(self):
+        for filename in [
+            "Valverde.png",
+            "Neymar.png",
+            "Ronaldo.png",
+            "Messi.png",
+        ]:
+            image = Image.open(IMAGE_FOLDER / filename).convert("RGBA")
+            self.assertEqual(image.getchannel("A").getextrema(), (0, 255))
 
 
 if __name__ == "__main__":

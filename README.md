@@ -19,7 +19,7 @@ FIVE90 is a same-device, two-player fantasy futsal draft and event-based match r
 - Plotly pitch with five blue players, five red players, surnames, micro-movements, and a moving ball
 - Dynamic score, minute, event, winner, and goal-scorer displays
 - Rematch, New Draft, and Exit options
-- Windows/macOS sound playback when the operating system supports it
+- Optional sound assets are included without affecting replay performance
 - Console fallback for computers where the graphical draft cannot open
 
 ## Project structure
@@ -122,26 +122,11 @@ python -m unittest discover -s tests -v
 
 ## Important sound note
 
-FIVE90 does **not** require `pygame`. This avoids the Python 3.14 installation failure seen during development. The game remains fully playable if sound is unavailable.
-
-To disable sound intentionally:
-
-Windows PowerShell:
-
-```powershell
-$env:FIVE90_SOUND="0"
-python main.py
-```
-
-macOS:
-
-```bash
-FIVE90_SOUND=0 python main.py
-```
+FIVE90 does **not** require `pygame`. This avoids the Python 3.14 installation failure seen during development. Sound files are kept in `Sounds/` for future optional use; the stable replay does not start a separate audio process, so it stays synchronized and responsive on Windows and macOS.
 
 ## Team responsibilities
 
 - **Roshni:** player data validation, testing checklist, documentation support
 - **Prasiddha:** name entry, draft selection, completed-team and full-time interfaces
-- **Binisha:** Plotly pitch, player circles, ball movement, events, overlays, and sounds
+- **Binisha:** Plotly pitch, player circles, ball movement, events, overlays, and sound assets
 - **Apurva:** dynamic cards, match calculations, integration, debugging, and final testing

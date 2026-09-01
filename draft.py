@@ -365,21 +365,12 @@ class DraftWindow:
         ).pack(fill="x", side="bottom")
 
     def select_player(self, player_id):
-        picker_name = self.session.player_names[
-            self.session.current_picker
-        ]
-
         try:
-            selected = self.session.choose(player_id)
+            self.session.choose(player_id)
         except ValueError as error:
             messagebox.showerror("Invalid selection", str(error))
             return
 
-        messagebox.showinfo(
-            "Player selected",
-            f"{selected['name']} joins "
-            f"{picker_name}'s team.",
-        )
         self.show_draft_round()
 
     def show_completed_teams(self):
